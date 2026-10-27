@@ -1,0 +1,1 @@
+export function ErrorState() { return <div className="border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-5 py-4 text-sm leading-6 text-[var(--text-secondary)]">We could not load public products right now. Please try again shortly.</div>; }

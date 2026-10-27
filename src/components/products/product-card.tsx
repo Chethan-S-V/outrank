@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { CategoryBadge } from "@/components/products/category-badge";
+import { RankBadge } from "@/components/leaderboard/rank-badge";
+import { ProductLogo } from "@/components/products/product-logo";
+import type { PublicProduct } from "@/services/products";
+
+export function ProductCard({ product }: { product: PublicProduct }) { return <article className="group flex min-w-0 flex-col border border-[var(--border)] bg-[var(--surface)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--accent)]/70"><div className="flex items-start justify-between gap-4"><ProductLogo name={product.name} src={product.logoUrl} /><RankBadge rank={product.rank} /></div><div className="mt-5 min-w-0"><CategoryBadge name={product.categoryName} slug={product.categorySlug} /><h3 className="mt-2 truncate text-lg font-semibold text-[var(--text-primary)]"><Link className="outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]" href={`/products/${product.slug}`}>{product.name}</Link></h3><p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--text-secondary)]">{product.description}</p></div><div className="mt-5 flex items-center justify-between border-t border-[var(--border)] pt-4"><span className="text-xs text-[var(--text-muted)]">Confirmed support</span><span className="font-mono text-sm font-semibold text-[var(--text-primary)]">{product.supportCurrency} {product.totalSupportAmount}</span></div></article>; }
