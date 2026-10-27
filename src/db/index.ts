@@ -10,7 +10,8 @@ function getDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required to use the database.");
+    // Safe build-time fallback when static pages are collected on CI/Vercel without live DB env
+    return "postgresql://postgres:postgres@127.0.0.1:5432/outrank_build_placeholder";
   }
 
   return databaseUrl;

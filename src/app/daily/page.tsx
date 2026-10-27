@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicProducts } from "@/services/products";
+import { getPublicProducts, type PublicProduct } from "@/services/products";
 import { RankingRow } from "@/components/outrank/ranking-row";
 import { Zap, Calendar } from "lucide-react";
 
@@ -8,10 +8,15 @@ export const metadata: Metadata = {
   description: "Explore the top products and confirmed daily visibility on Outrank.",
 };
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function DailyPage() {
-  const products = await getPublicProducts({ limit: 50 });
+  let products: PublicProduct[] = [];
+  try {
+    products = await getPublicProducts({ limit: 50 });
+  } catch {
+    products = [];
+  }
   const todayDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",

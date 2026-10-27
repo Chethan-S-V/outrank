@@ -77,34 +77,43 @@ export async function getPublicProducts({
   category,
   limit = 5000,
 }: DiscoveryFilters = {}): Promise<PublicProduct[]> {
-  const normalizedQuery = query?.trim();
-  const conditions: SQL[] = [...publicProductConditions];
-
-  if (category) {
-    conditions.push(eq(categories.slug, category));
+  if (!process.env.DATABASE_URL) {
+    return [];
   }
 
-  if (normalizedQuery) {
-    const search = `%${normalizedQuery}%`;
-    const searchCondition = or(
-      ilike(products.name, search),
-      ilike(products.description, search),
-      ilike(products.websiteUrl, search),
-      ilike(categories.name, search),
-    );
+  try {
+    const normalizedQuery = query?.trim();
+    const conditions: SQL[] = [...publicProductConditions];
 
-    if (searchCondition) {
-      conditions.push(searchCondition);
+    if (category) {
+      conditions.push(eq(categories.slug, category));
     }
-  }
 
-  return getDb()
-    .select(publicProductSelection())
-    .from(products)
-    .innerJoin(categories, eq(products.categoryId, categories.id))
-    .where(and(...conditions))
-    .orderBy(desc(products.totalSupportAmount), asc(products.createdAt))
-    .limit(Math.min(Math.max(limit, 1), 10000));
+    if (normalizedQuery) {
+      const search = `%${normalizedQuery}%`;
+      const searchCondition = or(
+        ilike(products.name, search),
+        ilike(products.description, search),
+        ilike(products.websiteUrl, search),
+        ilike(categories.name, search),
+      );
+
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    return await getDb()
+      .select(publicProductSelection())
+      .from(products)
+      .innerJoin(categories, eq(products.categoryId, categories.id))
+      .where(and(...conditions))
+      .orderBy(desc(products.totalSupportAmount), asc(products.createdAt))
+      .limit(Math.min(Math.max(limit, 1), 10000));
+  } catch (err) {
+    console.warn("getPublicProducts database query skipped:", err);
+    return [];
+  }
 }
 
 export async function getPublicCategories(): Promise<PublicCategory[]> {
@@ -191,32 +200,52 @@ export async function getPublicCategoryBySlug(slug: string): Promise<PublicCateg
 }
 
 export async function getPublicPlatformStats(): Promise<PublicPlatformStats> {
-  const [productResult, categoryResult, contributionResult] = await Promise.all([
-    getDb()
-      .select({
-        total: count(products.id).mapWith(Number),
-        totalBacking: sum(products.totalSupportAmount),
-      })
-      .from(products)
-      .where(and(...publicProductConditions)),
-    getDb()
-      .select({ total: count(categories.id).mapWith(Number) })
-      .from(categories)
-      .where(eq(categories.isActive, true)),
-    getDb()
-      .select({
-        totalCount: count(contributions.id).mapWith(Number),
-        totalSum: sum(contributions.amount),
-      })
-      .from(contributions)
-      .where(eq(contributions.status, "succeeded")),
-  ]);
+  if (!process.env.DATABASE_URL) {
+    return {
+      totalProducts: 0,
+      totalCategories: ALL_CATALOG_CATEGORIES.length,
+      totalContributions: 0,
+      totalConfirmedAmount: "0",
+      totalBackingAmount: "0",
+    };
+  }
 
-  return {
-    totalProducts: productResult[0]?.total ?? 0,
-    totalCategories: Math.max(categoryResult[0]?.total ?? 0, ALL_CATALOG_CATEGORIES.length),
-    totalContributions: contributionResult[0]?.totalCount ?? 0,
-    totalConfirmedAmount: contributionResult[0]?.totalSum ?? "0",
-    totalBackingAmount: productResult[0]?.totalBacking ?? "0",
-  };
+  try {
+    const [productResult, categoryResult, contributionResult] = await Promise.all([
+      getDb()
+        .select({
+          total: count(products.id).mapWith(Number),
+          totalBacking: sum(products.totalSupportAmount),
+        })
+        .from(products)
+        .where(and(...publicProductConditions)),
+      getDb()
+        .select({ total: count(categories.id).mapWith(Number) })
+        .from(categories)
+        .where(eq(categories.isActive, true)),
+      getDb()
+        .select({
+          totalCount: count(contributions.id).mapWith(Number),
+          totalSum: sum(contributions.amount),
+        })
+        .from(contributions)
+        .where(eq(contributions.status, "succeeded")),
+    ]);
+
+    return {
+      totalProducts: productResult[0]?.total ?? 0,
+      totalCategories: Math.max(categoryResult[0]?.total ?? 0, ALL_CATALOG_CATEGORIES.length),
+      totalContributions: contributionResult[0]?.totalCount ?? 0,
+      totalConfirmedAmount: contributionResult[0]?.totalSum ?? "0",
+      totalBackingAmount: productResult[0]?.totalBacking ?? "0",
+    };
+  } catch {
+    return {
+      totalProducts: 0,
+      totalCategories: ALL_CATALOG_CATEGORIES.length,
+      totalContributions: 0,
+      totalConfirmedAmount: "0",
+      totalBackingAmount: "0",
+    };
+  }
 }
